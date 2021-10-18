@@ -31,7 +31,7 @@ spec:
     spec:
       containers:
       - image: quay.lab.agiledagger.io/mmurphy/locust:1.0.1
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         name: master
         args: ["--master"]
         volumeMounts:
