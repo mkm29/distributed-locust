@@ -4,6 +4,7 @@ metadata:
   labels:
     role: locust-master
   name: locust-master
+  namespace: loadtest
 spec:
   type: ClusterIP
   ports:

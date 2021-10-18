@@ -1,0 +1,18 @@
+kind: Route
+apiVersion: route.openshift.io/v1
+metadata:
+  name: locist-route
+  namespace: loadtest
+  labels:
+    app: locust
+spec:
+  host: locust.apps.agiledagger.io
+  to:
+    kind: Service
+    name: locust-master
+    weight: 100
+  port:
+    targetPort: 8089
+  tls:
+    insecureEdgeTerminationPolicy: Allow
+    termination: edge
