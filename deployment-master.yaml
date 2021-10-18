@@ -30,7 +30,7 @@ spec:
         app: locust-master
     spec:
       containers:
-      - image: quay.lab.agiledagger.io/mmurphy/locust:latest
+      - image: quay.lab.agiledagger.io/mmurphy/locust:1.0.1
         imagePullPolicy: Always
         name: master
         args: ["--master"]
@@ -55,4 +55,4 @@ spec:
       volumes:
       - name: locust-scripts
         configMap:
-          name: scripts-cm
+          name: cm-scripts

@@ -6,7 +6,7 @@ metadata:
   labels:
     app: locust
 spec:
-  host: locust.apps.agiledagger.io
+  host: locust.apps.dev.agiledagger.io
   to:
     kind: Service
     name: locust-master
