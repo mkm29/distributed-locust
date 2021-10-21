@@ -30,13 +30,15 @@ spec:
         app: locust-master
     spec:
       containers:
-      - image: quay.lab.agiledagger.io/mmurphy/locust:1.0.1
+      - image: quay.lab.agiledagger.io/mmurphy/locust:0.1.0
         imagePullPolicy: IfNotPresent
         name: master
         args: ["--master"]
         volumeMounts:
           - mountPath: /home/locust
             name: locust-scripts
+          - mountPath: /tmp
+            name: shared-volume
         ports:
         - containerPort: 5557
           name: comm
@@ -56,3 +58,5 @@ spec:
       - name: locust-scripts
         configMap:
           name: cm-scripts
+      - name: shared-volume
+        emptyDir: {}
