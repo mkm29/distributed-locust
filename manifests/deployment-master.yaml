@@ -30,12 +30,13 @@ spec:
         app: locust-master
     spec:
       containers:
-      - image: quay.lab.agiledagger.io/mmurphy/locust:0.1.0
+      - image: quay.lab.agiledagger.io/mmurphy/locust:0.1.1
         imagePullPolicy: IfNotPresent
         name: master
+        command: ["sh","-c","locust"]
         args: ["--master"]
         volumeMounts:
-          - mountPath: /home/locust
+          - mountPath: /home/
             name: locust-scripts
           - mountPath: /tmp
             name: shared-volume
