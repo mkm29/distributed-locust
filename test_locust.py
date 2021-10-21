@@ -1,12 +1,15 @@
 from typing import Optional
-from locust import HttpUser, task, between
 from faker import Faker
 import random
+import requests
 
-class FirecornUserTest(HttpUser):
+class FirecornUserTest:
 
-    wait_time = between(0.5, 3.0)
     fake = Faker()
+
+    @property
+    def api_url(self):
+        return "https://api-firecorn.apps.dev.agiledagger.io/"
 
     def _create_user(self) -> Optional[int]:
         # Create a new user
@@ -29,12 +32,13 @@ class FirecornUserTest(HttpUser):
             random.randint(0000000000,9999999999),
         )
         mutation = mutation.replace("/n","")
-        response = self.client.post(
-            "https://api-firecorn.apps.dev.agiledagger.io/",
-            name="CreateUser",
+        print("Mutation: \n", mutation)
+        response = requests.post(
+            self.api_url,
             headers=self.headers,
-            json={"query": mutation},
+            data={"query": mutation},
         )
+        print("Response: ", response)
         data = response.json()
         if data["data"]["id"]:
             with open("/tmp/user_ids.txt", "a") as f:
@@ -63,11 +67,9 @@ class FirecornUserTest(HttpUser):
             list(line.strip() for line in open(f"/tmp/{type}_ids.txt"))
         )
 
-    @task(3)
     def create_user(self):
         self._create_user()
 
-    @task(5)
     def query_users(self):
         query = """
         query {
@@ -78,14 +80,12 @@ class FirecornUserTest(HttpUser):
         }
         """
         query = query.replace("/n","")
-        _ = self.client.post(
-            "https://api-firecorn.apps.dev.agiledagger.io/",
-            name="GetUsers",
+        _ = requests.post(
+            self.api_url,
             headers=self.headers,
-            json={"query": query},
+            data={"query": query},
         )
 
-    @task(2)
     def create_post(self):
         # This should a random user
         mutation = """
@@ -106,11 +106,10 @@ class FirecornUserTest(HttpUser):
             self.fake.text(),
         )
         mutation = mutation.replace("/n","")
-        response = self.client.post(
-            "https://api-firecorn.apps.dev.agiledagger.io/",
-            name="CreatePost",
+        response = requests.post(
+            self.api_url,
             headers=self.headers,
-            json={"query": mutation},
+            data={"query": mutation},
         )
         data = response.json()
         if data["data"]["id"]:
@@ -118,7 +117,6 @@ class FirecornUserTest(HttpUser):
                 print("Added post with id: %d" % data["data"]["id"])
                 f.write(data["data"]["id"] + "\n")
 
-    @task(4)
     def get_posts(self):
         query = """
         query {
@@ -129,14 +127,12 @@ class FirecornUserTest(HttpUser):
         }
         """
         query = query.replace("/n","")
-        _ = self.client.post(
-            "https://api-firecorn.apps.dev.agiledagger.io/",
-            name="GetPosts",
+        _ = requests.post(
+            self.api_url,
             headers=self.headers,
-            json={"query": query},
+            data={"query": query},
         )
 
-    @task(1)
     def create_comment(self):
         mutation = """
         mutation createComment {
@@ -156,11 +152,10 @@ class FirecornUserTest(HttpUser):
             self.fake.text(),
         )
         mutation = mutation.replace("/n","")
-        response = self.client.post(
-            "https://api-firecorn.apps.dev.agiledagger.io/",
-            name="CreateComment",
+        response = requests.post(
+            self.api_url,
             headers=self.headers,
-            json={"query": mutation},
+            data={"query": mutation},
         )
         data = response.json()
         if data["data"]["id"]:
@@ -168,7 +163,6 @@ class FirecornUserTest(HttpUser):
                 print("Added comment with id: %d" % data["data"]["id"])
                 f.write(data["data"]["id"] + "\n")
 
-    @task(2)
     def get_comments(self):
         query = """
         query {
@@ -179,9 +173,12 @@ class FirecornUserTest(HttpUser):
         }
         """
         query = query.replace("/n","")
-        _ = self.client.post(
-            "https://api-firecorn.apps.dev.agiledagger.io/",
-            name="GetPosts",
+        _ = requests.post(
+            self.api_url,
             headers=self.headers,
-            json={"query": query},
+            data={"query": query},
         )
+
+if __name__ == "__main__":
+    client = FirecornUserTest()
+    client.create_user()

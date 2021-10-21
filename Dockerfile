@@ -5,6 +5,8 @@ LABEL name="Load testing image" \
 
 USER root
 
+WORKDIR /home/
+
 RUN pip install --upgrade pip && \
     pip install -U Faker locust requests
 
