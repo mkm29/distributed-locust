@@ -5,7 +5,7 @@ metadata:
   namespace: loadtest
 data:
   locustfile.py: |
-    import time
+    from typing import Optional
     from locust import HttpUser, task, between
     from faker import Faker
     import random
@@ -15,7 +15,7 @@ data:
         wait_time = between(0.5, 3.0)
         fake = Faker()
 
-        def _create_user(self) -> int:
+        def _create_user(self) -> Optional[int]:
             # Create a new user
             mutation = """
             mutation {
@@ -35,6 +35,7 @@ data:
                 self.fake.address(),
                 self.fake.phone_number(),
             )
+            mutation = mutation.replace("/n","")
             response = self.client.post(
                 "https://api-firecorn.apps.dev.agiledagger.io/",
                 name="CreateUser",
@@ -54,7 +55,7 @@ data:
         def on_start(self):
             """on_start is called when a Locust start before any task is scheduled"""
             # Create a few users by using the API
-            for i in range(3):
+            for _ in range(3):
                 self._create_user()
 
         @property
@@ -83,6 +84,7 @@ data:
                 }
             }
             """
+            query = query.replace("/n","")
             _ = self.client.post(
                 "https://api-firecorn.apps.dev.agiledagger.io/",
                 name="GetUsers",
@@ -110,7 +112,8 @@ data:
                 self.fake.sentence(),
                 self.fake.text(),
             )
-            data = self.client.post(
+            mutation = mutation.replace("/n","")
+            response = self.client.post(
                 "https://api-firecorn.apps.dev.agiledagger.io/",
                 name="CreatePost",
                 headers=self.headers,
@@ -132,6 +135,7 @@ data:
                 }
             }
             """
+            query = query.replace("/n","")
             _ = self.client.post(
                 "https://api-firecorn.apps.dev.agiledagger.io/",
                 name="GetPosts",
@@ -158,7 +162,8 @@ data:
                 self.get_random_id(type="post"),
                 self.fake.text(),
             )
-            data = self.client.post(
+            mutation = mutation.replace("/n","")
+            response = self.client.post(
                 "https://api-firecorn.apps.dev.agiledagger.io/",
                 name="CreateComment",
                 headers=self.headers,
@@ -180,6 +185,7 @@ data:
                 }
             }
             """
+            query = query.replace("/n","")
             _ = self.client.post(
                 "https://api-firecorn.apps.dev.agiledagger.io/",
                 name="GetPosts",
