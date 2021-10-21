@@ -1,8 +1,6 @@
-FROM locustio/locust:latest
+FROM --platform=linux/amd64 python:3.8.12 
 
-ENV PATH /home/locust/.local/bin:$PATH
-
-RUN /usr/local/bin/python -m pip install --upgrade pip && \
-    pip install -U Faker
+RUN pip install --upgrade pip && \
+    pip install -U Faker locust requests
 
 USER 1001
