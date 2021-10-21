@@ -1,10 +1,24 @@
 from locust import HttpUser, task, between
 from faker import Faker
+import random
 
 class FirecornUserTest(HttpUser):
 
     wait_time = between(0.5, 3.0)
     fake = Faker()
+
+    @property
+    def headers(self):
+        return {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        }
+
+    def get_random_id(self, type):
+        if type not in ['user', 'post', 'comment']:
+            return None
+        # open up shared file of user ids
+        return random.choice(list(line.strip() for line in open(f'/tmp/{type}_ids.txt')))
 
     @task(1)
     def create_user(self):
@@ -18,8 +32,6 @@ class FirecornUserTest(HttpUser):
             })
             {
                 id
-                name
-                address
             }
         }
         """ % (
@@ -28,7 +40,7 @@ class FirecornUserTest(HttpUser):
             self.fake.address(),
             self.fake.phone_number(),
         )
-        _ = self.client.post(
+        response = self.client.post(
             "http://localhost:8080/",
             name="CreateUser",
             headers={
@@ -36,6 +48,11 @@ class FirecornUserTest(HttpUser):
             },
             json={"query": mutation},
         )
+        data = response.json()
+        if data['data']['id']:
+            with open('/tmp/user_ids.txt', 'a') as f:
+                print("Added user with id: %d" % data['data']['id'])
+                f.write(data['data']['id'] + '\n')
 
     @task(2)
     def query_users(self):
@@ -72,11 +89,11 @@ class FirecornUserTest(HttpUser):
         }
         }
         """ % (
-            self.fake.random_int(min=1, max=100),
+            self.get_random_id(type='user'),
             self.fake.sentence(),
             self.fake.text()
         )
-        _ = self.client.post(
+        data = self.client.post(
             "http://localhost:8080/",
             name="CreatePost",
             headers={
@@ -84,6 +101,11 @@ class FirecornUserTest(HttpUser):
             },
             json={"query": mutation},
         )
+        data = response.json()
+        if data['data']['id']:
+            with open('/tmp/post_ids.txt', 'a') as f:
+                print("Added post with id: %d" % data['data']['id'])
+                f.write(data['data']['id'] + '\n')
 
     @task(2)
     def get_posts(self):
@@ -119,16 +141,22 @@ class FirecornUserTest(HttpUser):
             }
         }
         """ % (
-            self.fake.random_int(min=1, max=100),
-            self.fake.random_int(min=1, max=100),
+            self.get_random_id(type='user'),
+            self.get_random_id(type='post'),
             self.fake.text()
         )
-        _ = self.client.post(
+        data = self.client.post(
             "http://localhost:8080/",
             name="CreateComment",
             headers={"Accept": "application/graphql",},
             json={"query": mutation}
         )
+        data = response.json()
+        if data['data']['id']:
+            with open('/tmp/comment_ids.txt', 'a') as f:
+                print("Added comment with id: %d" % data['data']['id'])
+                f.write(data['data']['id'] + '\n')
+        
 
     @task(2)
     def get_comments(self):
@@ -148,3 +176,4 @@ class FirecornUserTest(HttpUser):
             },
             json={"query": query},
         )
+        }
