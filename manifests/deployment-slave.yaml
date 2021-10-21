@@ -1,8 +1,6 @@
-apiVersion: apps.openshift.io/v1
-kind: DeploymentConfig
+apiVersion: apps/v1
+kind: Deployment
 metadata:
-  annotations:
-    deployment.kubernetes.io/revision: "1"
   labels:
     role: locust-worker
     app: locust-worker
@@ -11,18 +9,9 @@ metadata:
 spec:
   replicas: 2
   selector:
-    role: locust-worker
-    app: locust-worker
-  strategy:
-    type: Rolling
-    rollingParams:
-      updatePeriodSeconds: 1
-      intervalSeconds: 1
-      timeoutSeconds: 600
-      maxUnavailable: 25%
-      maxSurge: 25%
-    resources: {}
-    activeDeadlineSeconds: 21600
+    matchLabels:
+      role: locust-worker
+      app: locust-worker
   template:
     metadata:
       labels:
