@@ -1,14 +1,43 @@
 from typing import Optional
-from locust import HttpUser, task, between
-from faker import Faker
+from locust import TaskSet, task, HttpUser, between
 import random
+from faker import Faker
+import logging
 
-class FirecornUserTest(HttpUser):
+baseEndpoint = 'https://api-firecorn.apps.dev.agiledagger.io/'
+headers = {"Accept": "application/graphql"}
+fake = Faker()
 
-    wait_time = between(0.5, 3.0)
-    fake = Faker()
+def get_random_id(type):
+    if type not in ["user", "post", "comment"]:
+        return None
+    # open up shared file of user ids
+    return random.choice(
+        list(line.strip() for line in open(f"/tmp/{type}_ids.txt"))
+    ) 
 
-    def _create_user(self) -> Optional[int]:
+class UserTasks(TaskSet):
+
+    @task(2)
+    def get_all_users(self):
+        query = """
+        query {
+            getUsers {
+                name
+                address
+            }
+        }
+        """
+        query = query.replace("/n","")
+        _ = self.client.post(
+            baseEndpoint,
+            name="GetUsers",
+            headers=headers,
+            json={"query": query},
+        )
+
+    @task(1)
+    def create_user(self) -> Optional[int]:
         # Create a new user
         mutation = """
         mutation {
@@ -23,165 +52,95 @@ class FirecornUserTest(HttpUser):
             }
         }
         """ % (
-            self.fake.name(),
-            self.fake.random_element(elements=("male", "female")),
-            "".join(self.fake.address().splitlines()),
+            fake.name(),
+            fake.random_element(elements=("male", "female")),
+            " ".join(fake.address().splitlines()),
             random.randint(0000000000,9999999999),
         )
         mutation = mutation.replace("/n","")
         response = self.client.post(
-            "https://api-firecorn.apps.dev.agiledagger.io/",
+            baseEndpoint,
             name="CreateUser",
-            headers=self.headers,
+            headers=headers,
             json={"query": mutation},
         )
         data = response.json()
-        if data["data"]["id"]:
+        print(data)
+        if data["data"]['createUser']["id"]:
+            user_id = int(data["data"]['createUser']["id"])
             with open("/tmp/user_ids.txt", "a") as f:
-                print("Added user with id: %d" % data["data"]["id"])
-                f.write(data["data"]["id"] + "\n")
-            return data["data"]["id"]
+                print("Added user with id: %d" % user_id)
+                f.write(data["data"]['createUser']["id"] + "\n")
+            return user_id
         else:
             print("Unable to create user")
             return None
 
-    def on_start(self):
-        """on_start is called when a Locust start before any task is scheduled"""
-        # Create a few users by using the API
-        for _ in range(3):
-            self._create_user()
-
-    @property
-    def headers(self):
-        return {"Accept": "application/graphql"}
-
-    def get_random_id(self, type):
-        if type not in ["user", "post", "comment"]:
-            return None
-        # open up shared file of user ids
-        return random.choice(
-            list(line.strip() for line in open(f"/tmp/{type}_ids.txt"))
-        )
-
-    @task(3)
-    def create_user(self):
-        self._create_user()
-
-    @task(5)
-    def query_users(self):
-        query = """
-        query {
-            getUsers {
-                name
-                address
+class PostTasks(TaskSet):
+    
+        @task(2)
+        def get_all_posts(self):
+            query = """
+            query {
+                getPosts {
+                    title
+                    body
+                }
             }
-        }
-        """
-        query = query.replace("/n","")
-        _ = self.client.post(
-            "https://api-firecorn.apps.dev.agiledagger.io/",
-            name="GetUsers",
-            headers=self.headers,
-            json={"query": query},
-        )
-
-    @task(2)
-    def create_post(self):
-        # This should a random user
-        mutation = """
-        mutation createPost {
-        createPost(postDetails: {
-            userId: %d,
-            title: "%s",
-            body: "%s"
-        })
-        {
-            id
-            body
-        }
-        }
-        """ % (
-            self.get_random_id(type="user"),
-            self.fake.sentence(),
-            self.fake.text(),
-        )
-        mutation = mutation.replace("/n","")
-        response = self.client.post(
-            "https://api-firecorn.apps.dev.agiledagger.io/",
-            name="CreatePost",
-            headers=self.headers,
-            json={"query": mutation},
-        )
-        data = response.json()
-        if data["data"]["id"]:
-            with open("/tmp/post_ids.txt", "a") as f:
-                print("Added post with id: %d" % data["data"]["id"])
-                f.write(data["data"]["id"] + "\n")
-
-    @task(4)
-    def get_posts(self):
-        query = """
-        query {
-            getPosts {
-                id
-                body
+            """
+            query = query.replace("/n","")
+            _ = self.client.post(
+                baseEndpoint,
+                name="GetPosts",
+                headers=headers,
+                json={"query": query},
+            )
+    
+        @task(1)
+        def create_post(self) -> Optional[int]:
+            # Create a new post
+            post_id = get_random_id("post")
+            if not post_id:
+                return None
+            mutation = """
+            mutation {
+                createPost(postDetails: {
+                    title: "%s",
+                    body: "%s",
+                    userId: %d
+                })
+                {
+                    id
+                }
             }
-        }
-        """
-        query = query.replace("/n","")
-        _ = self.client.post(
-            "https://api-firecorn.apps.dev.agiledagger.io/",
-            name="GetPosts",
-            headers=self.headers,
-            json={"query": query},
-        )
+            """ % (
+                " ".join(fake.sentence().splitlines()),
+                " ".join(fake.text().splitlines()),
+                post_id,
+            )
+            mutation = mutation.replace("/n","")
+            response = self.client.post(
+                baseEndpoint,
+                name="CreatePost",
+                headers=headers,
+                json={"query": mutation},
+            )
+            data = response.json()
+            if data["data"]['createPost']["id"]:
+                post_id = int(data["data"]['createPost']["id"])
+                with open("/tmp/post_ids.txt", "a") as f:
+                    print("Added post with id: %d" % post_id)
+                    f.write(data["data"]['createPost']["id"] + "\n")
+                return post_id
 
-    @task(1)
-    def create_comment(self):
-        mutation = """
-        mutation createComment {
-            createComment(commentDetails: {
-                userId: %d,
-                postId: %d,
-                body: "%s"
-            })
-            {
-                id
-                body
-            }
-        }
-        """ % (
-            self.get_random_id(type="user"),
-            self.get_random_id(type="post"),
-            self.fake.text(),
-        )
-        mutation = mutation.replace("/n","")
-        response = self.client.post(
-            "https://api-firecorn.apps.dev.agiledagger.io/",
-            name="CreateComment",
-            headers=self.headers,
-            json={"query": mutation},
-        )
-        data = response.json()
-        if data["data"]["id"]:
-            with open("/tmp/comment_ids.txt", "a") as f:
-                print("Added comment with id: %d" % data["data"]["id"])
-                f.write(data["data"]["id"] + "\n")
 
-    @task(2)
-    def get_comments(self):
-        query = """
-        query {
-            getComments {
-                id
-                body
-            }
-        }
-        """
-        query = query.replace("/n","")
-        _ = self.client.post(
-            "https://api-firecorn.apps.dev.agiledagger.io/",
-            name="GetPosts",
-            headers=self.headers,
-            json={"query": query},
-        )
+class ApiUser(HttpUser):
+    wait_time = between(0.5, 1.5)
+
+    def on_start(self) -> None:
+        logging.info("Begin Locust load/stress test")
+
+    def on_stop(self) -> None:
+        logging.info("End Locust load/stress test")
+
+    tasks = {UserTasks, PostTasks}
